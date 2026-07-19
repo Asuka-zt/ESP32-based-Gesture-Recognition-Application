@@ -26,13 +26,16 @@ class HandDetector:
     ) -> None:
         self._crop_margin = crop_margin
         self._lock = Lock()
-        self._hands = mp.solutions.hands.Hands(
-            static_image_mode=False,
-            max_num_hands=1,
-            model_complexity=1,
-            min_detection_confidence=min_detection_confidence,
-            min_tracking_confidence=min_tracking_confidence,
-        )
+        try:
+            self._hands = mp.solutions.hands.Hands(
+                static_image_mode=False,
+                max_num_hands=1,
+                model_complexity=1,
+                min_detection_confidence=min_detection_confidence,
+                min_tracking_confidence=min_tracking_confidence,
+            )
+        except RuntimeError as exc:
+            raise RuntimeError(f"MediaPipe hand detector initialization failed: {exc}") from exc
 
     def close(self) -> None:
         with self._lock:
@@ -86,4 +89,3 @@ class HandDetector:
             handedness=handedness,
             confidence=confidence,
         )
-

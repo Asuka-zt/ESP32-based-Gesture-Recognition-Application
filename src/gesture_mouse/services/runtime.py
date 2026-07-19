@@ -28,6 +28,7 @@ class ApplicationRuntime:
         self._hand_detector: HandDetector | None = None
         self._classifier = GestureClassifier(settings.model_path, settings.model_metadata_path)
         self._vision: VisionService | None = None
+        self._vision_error: str | None = None
         self._mouse_control: MouseControlService | None = None
         self._mouse_backend_error: str | None = None
 
@@ -39,14 +40,38 @@ class ApplicationRuntime:
 
     @property
     def vision(self) -> VisionService:
+        if self._vision_error is not None:
+            raise RuntimeError(self._vision_error)
         if self._vision is None:
-            self._vision = VisionService(
-                self.frames,
-                self.annotated_frames,
-                self.hand_detector,
-                self._classifier,
-            )
+            try:
+                self._vision = VisionService(
+                    self.frames,
+                    self.annotated_frames,
+                    self.hand_detector,
+                    self._classifier,
+                )
+            except RuntimeError as exc:
+                self._vision_error = str(exc)
+                raise
         return self._vision
+
+    def vision_status(self) -> dict[str, object]:
+        if self._vision is not None:
+            return self._vision.status()
+        if self._vision_error is not None:
+            return {
+                "model_ready": False,
+                "model_error": self._vision_error,
+                "prediction": None,
+            }
+        try:
+            return self.vision.status()
+        except RuntimeError:
+            return {
+                "model_ready": False,
+                "model_error": self._vision_error,
+                "prediction": None,
+            }
 
     @property
     def mouse_control(self) -> MouseControlService | None:
@@ -63,7 +88,10 @@ class ApplicationRuntime:
 
     def start(self) -> None:
         self.capture.start()
-        self.vision.start()
+        try:
+            self.vision.start()
+        except RuntimeError:
+            pass
         if self.mouse_control is not None:
             self.mouse_control.start()
 
@@ -95,7 +123,7 @@ class ApplicationRuntime:
             "stream": metrics,
             "device": device,
             "device_error": device_error,
-            "vision": self.vision.status(),
+            "vision": self.vision_status(),
             "control": (
                 self.mouse_control.status()
                 if self.mouse_control is not None

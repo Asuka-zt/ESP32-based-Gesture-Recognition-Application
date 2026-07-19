@@ -7,7 +7,7 @@ requires-python = ">=3.12,<3.13"
 dependencies = [
   "fastapi>=0.115,<1",
   "httpx>=0.28,<1",
-  "mediapipe>=0.10.20,<1",
+  "mediapipe==0.10.21",
   "numpy>=1.26,<3",
   "opencv-contrib-python>=4.10,<6",
   "pillow>=10,<13",

@@ -89,7 +89,7 @@ def create_app(
 
     @app.get("/api/prediction", tags=["recognition"])
     async def api_prediction(request: Request) -> dict[str, object]:
-        return request.app.state.runtime.vision.status()
+        return request.app.state.runtime.vision_status()
 
     @app.post("/api/control/enable", tags=["control"])
     async def enable_control(request: Request) -> dict[str, object]:
@@ -144,7 +144,10 @@ def create_app(
         packet = runtime.frames.latest(copy=True)
         if packet is None:
             raise HTTPException(status_code=503, detail="ESP32 stream has no frame")
-        observation = runtime.hand_detector.detect(packet.image)
+        try:
+            observation = runtime.hand_detector.detect(packet.image)
+        except RuntimeError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
         if observation is None:
             raise HTTPException(status_code=422, detail="no hand detected")
         try:
